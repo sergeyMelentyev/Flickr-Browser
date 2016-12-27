@@ -14,7 +14,9 @@ enum DownLoadStatus { IDLE, PROCESSING, NOT_INITIALIZED, FAILED_OR_EMPTY, OK }
 
 class GetRawData extends AsyncTask<String, Void, String> {
     private static final String TAG = "GetRowData";
+
     DownLoadStatus mDownLoadStatus;
+
     private final OnDownLoadComplete mCallBack;
 
     interface OnDownLoadComplete {
