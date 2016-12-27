@@ -7,7 +7,9 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
-public class MainActivity extends AppCompatActivity implements GetRawData.OnDownLoadComplete {
+import java.util.List;
+
+public class MainActivity extends AppCompatActivity implements GetFlickrJsonData.OnDataAvailable {
     private static final String TAG = "MainActivity";
 
     @Override
@@ -18,11 +20,17 @@ public class MainActivity extends AppCompatActivity implements GetRawData.OnDown
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        GetRawData getRawData = new GetRawData(this);
-        String str = "https://api.flickr.com/services/feeds/photos_public.gne?tags=android,nougat&format=json&nojsoncallback=1";
-        getRawData.execute(str);
-
         Log.d(TAG, "onCreate: ends");
+    }
+
+    @Override
+    protected void onResume() {
+        Log.d(TAG, "onResume: starts");
+        super.onResume();
+        GetFlickrJsonData getFlickrJsonData = new GetFlickrJsonData(this, "https://api.flickr.com/services/feeds/photos_public.gne", "en-us", true);
+        getFlickrJsonData.executeOnSameThread("android, nougat");
+
+        Log.d(TAG, "onResume: ends");
     }
 
     @Override
@@ -46,11 +54,11 @@ public class MainActivity extends AppCompatActivity implements GetRawData.OnDown
     }
 
     @Override
-    public void onDownLoadComplete(String data, DownLoadStatus status) {
+    public void onDataAvailable(List<Photo> data, DownLoadStatus status) {
         if (status == DownLoadStatus.OK) {
-            Log.d(TAG, "onDownLoadComplete: data is " + data);
+            Log.d(TAG, "onDataAvailable: data is " + data);
         } else {
-            Log.e(TAG, "onDownLoadComplete failed with status " + status);
+            Log.e(TAG, "onDataAvailable failed with status " + status);
         }
     }
 
