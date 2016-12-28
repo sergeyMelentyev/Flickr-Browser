@@ -1,7 +1,6 @@
 package com.example.atmen.flickrbrowser;
 
 import android.os.AsyncTask;
-import android.util.Log;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -13,10 +12,7 @@ import java.net.URL;
 enum DownLoadStatus { IDLE, PROCESSING, NOT_INITIALIZED, FAILED_OR_EMPTY, OK }
 
 class GetRawData extends AsyncTask<String, Void, String> {
-    private static final String TAG = "GetRowData";
-
     DownLoadStatus mDownLoadStatus;
-
     private final OnDownLoadComplete mCallBack;
 
     interface OnDownLoadComplete {
@@ -26,6 +22,11 @@ class GetRawData extends AsyncTask<String, Void, String> {
     GetRawData(OnDownLoadComplete callBack) {
         this.mDownLoadStatus = DownLoadStatus.IDLE;
         this.mCallBack = callBack;
+    }
+
+    void runInSameThread(String s) {
+        if (mCallBack != null)
+            mCallBack.onDownLoadComplete(doInBackground(s), mDownLoadStatus);
     }
 
     @Override
@@ -52,8 +53,6 @@ class GetRawData extends AsyncTask<String, Void, String> {
             connection.connect();
 
             int response = connection.getResponseCode();
-            Log.d(TAG, "doInBackground: response code was: " + response);
-
             StringBuilder result = new StringBuilder();
             reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
 
@@ -64,11 +63,11 @@ class GetRawData extends AsyncTask<String, Void, String> {
             mDownLoadStatus = DownLoadStatus.OK;
             return result.toString();
         } catch (MalformedURLException e) {
-            Log.e(TAG, "doInBackground: Invalid URL:" + e.getMessage());
+            // error logic here
         } catch (IOException e) {
-            Log.e(TAG, "doInBackground: IO reading data" + e.getMessage());
+            // error logic here
         } catch (SecurityException e) {
-            Log.e(TAG, "doInBackground: Security exception" + e.getMessage());
+            // error logic here
         } finally {
             if (connection != null) {
                 connection.disconnect();
@@ -77,7 +76,7 @@ class GetRawData extends AsyncTask<String, Void, String> {
                 try {
                     reader.close();
                 } catch (IOException e) {
-                    Log.e(TAG, "doInBackground: error closing string " + e.getMessage());
+                    // error logic here
                 }
             }
         }
