@@ -1,7 +1,7 @@
 package com.example.atmen.flickrbrowser;
 
 import android.net.Uri;
-import android.util.Log;
+import android.os.AsyncTask;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -10,22 +10,19 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
-class GetFlickrJsonData implements GetRawData.OnDownLoadComplete {
-    private static final String TAG = "GetFlickrJsonData";
-
+class GetFlickrJsonData extends AsyncTask<String, Void, List<Photo>> implements GetRawData.OnDownLoadComplete {
     private List<Photo> mPhotoList = null;
     private String mBaseUrl;
     private String mLanguage;
     private boolean mMatchAll;
-
     private final OnDataAvailable mCallBack;
+    private boolean runningOnSameThread = false;
 
     interface OnDataAvailable {
         void onDataAvailable(List<Photo> data, DownLoadStatus status);
     }
 
-    public GetFlickrJsonData(OnDataAvailable callBack, String baseUrl, String language, boolean matchAll) {
-        Log.d(TAG, "GetFlickrJsonData called");
+    GetFlickrJsonData(OnDataAvailable callBack, String baseUrl, String language, boolean matchAll) {
         mCallBack = callBack;
         mBaseUrl = baseUrl;
         mLanguage = language;
@@ -33,18 +30,28 @@ class GetFlickrJsonData implements GetRawData.OnDownLoadComplete {
     }
 
     void executeOnSameThread(String searchCriteria) {
-        Log.d(TAG, "executeOnSameThread starts");
-
+        runningOnSameThread = true;
         String destinationUri = criteriaUri(searchCriteria, mLanguage, mMatchAll);
-
         GetRawData getRawData = new GetRawData(this);
         getRawData.execute(destinationUri);
-        Log.d(TAG, "executeOnSameThread ends");
+    }
+
+    @Override
+    protected List<Photo> doInBackground(String... params) {
+        String destinationUri = criteriaUri(params[0], mLanguage, mMatchAll);
+        GetRawData getRawData = new GetRawData(this);
+        getRawData.runInSameThread(destinationUri);
+        return mPhotoList;
+    }
+
+    @Override
+    protected void onPostExecute(List<Photo> photos) {
+        if (mCallBack != null) {
+            mCallBack.onDataAvailable(mPhotoList, DownLoadStatus.OK);
+        }
     }
 
     private String criteriaUri (String searchCriteria, String lang, boolean matchAll) {
-        Log.d(TAG, "criteriaUrl starts");
-
         return Uri.parse(mBaseUrl).buildUpon()
                 .appendQueryParameter("tags", searchCriteria)
                 .appendQueryParameter("tagmode", matchAll ? "ALL" : "ANY")
@@ -56,8 +63,6 @@ class GetFlickrJsonData implements GetRawData.OnDownLoadComplete {
 
     @Override
     public void onDownLoadComplete(String data, DownLoadStatus status) {
-        Log.d(TAG, "onDownLoadComplete starts");
-
         if (status == DownLoadStatus.OK) {
             mPhotoList = new ArrayList<>();
             try {
@@ -77,15 +82,13 @@ class GetFlickrJsonData implements GetRawData.OnDownLoadComplete {
 
                     Photo photoObject = new Photo(title, author, authorId, link, tags, photoUrl);
                     mPhotoList.add(photoObject);
-                    Log.d(TAG, "onDownLoadComplete " + photoObject.toString());
                 }
             } catch (JSONException jsone) {
                 jsone.printStackTrace();
-                Log.e(TAG, "onDownLoadComplete: error parsing json");
                 status = DownLoadStatus.FAILED_OR_EMPTY;
             }
         }
-        if (mCallBack != null) {
+        if (runningOnSameThread && mCallBack != null) {
             mCallBack.onDataAvailable(mPhotoList, status);
         }
     }
